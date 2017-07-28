@@ -1431,6 +1431,20 @@ public class GattService extends ProfileService {
         }
     }
 
+    private boolean isScanClient(int clientIf) {
+        for (ScanClient client : mScanManager.getRegularScanQueue()) {
+            if (client.clientIf == clientIf) {
+                return true;
+            }
+        }
+        for (ScanClient client : mScanManager.getBatchScanQueue()) {
+            if (client.clientIf == clientIf) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**************************************************************************
      * GATT Service functions - CLIENT
      *************************************************************************/
@@ -1449,6 +1463,11 @@ public class GattService extends ProfileService {
 
         if (DBG) Log.d(TAG, "unregisterClient() - clientIf=" + clientIf);
         mClientMap.remove(clientIf);
+
+        if (isScanClient(clientIf)) {
+            ScanClient client = new ScanClient(clientIf, false);
+            stopScan(client);
+        }
 
         AdvertiseClient client = mAdvertiseManager.getAdvertiseClient(clientIf);
         if (client != null && !client.appDied) {

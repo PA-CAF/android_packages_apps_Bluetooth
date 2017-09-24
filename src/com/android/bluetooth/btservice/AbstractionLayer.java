@@ -81,4 +81,36 @@ final public class AbstractionLayer {
     public static final int BT_STATUS_RMT_DEV_DOWN = 10;
     public static final int BT_STATUS_AUTH_REJECTED =11;
     public static final int BT_STATUS_AUTH_TIMEOUT = 12;
+
+    // match up with interop_feature_t enum of interop.h
+    public static final int INTEROP_DISABLE_LE_SECURE_CONNECTIONS = 0;
+    public static final int INTEROP_AUTO_RETRY_PAIRING = 1;
+    public static final int INTEROP_DISABLE_ABSOLUTE_VOLUME = 2;
+    public static final int INTEROP_DISABLE_AUTO_PAIRING = 3;
+    public static final int INTEROP_KEYBOARD_REQUIRES_FIXED_PIN = 4;
+    public static final int INTEROP_2MBPS_LINK_ONLY = 5;
+    public static final int INTEROP_DISABLE_SDP_AFTER_PAIRING = 6;
+    public static final int INTEROP_DISABLE_AUTH_FOR_HID_POINTING = 7;
+    public static final int INTEROP_REMOVE_HID_DIG_DESCRIPTOR = 8;
+    public static final int INTEROP_DISABLE_SNIFF_DURING_SCO = 9;
+    public static final int INTEROP_INCREASE_AG_CONN_TIMEOUT = 10;
+    public static final int INTEROP_DISABLE_LE_CONN_PREFERRED_PARAMS = 11;
+    public static final int INTEROP_ADV_AVRCP_VER_1_3 = 12;
+    public static final int INTEROP_DISABLE_AAC_CODEC = 13;
+    public static final int INTEROP_ENABLE_AAC_CODEC = 14;
+    public static final int INTEROP_DYNAMIC_ROLE_SWITCH = 15;
+    public static final int INTEROP_DISABLE_ROLE_SWITCH = 16;
+    public static final int INTEROP_DISABLE_ROLE_SWITCH_POLICY = 17;
+    public static final int INTEROP_HFP_1_7_BLACKLIST = 18;
+    public static final int INTEROP_STORE_REMOTE_AVRCP_VERSION_1_4 = 19;
+    public static final int INTEROP_ADV_PBAP_VER_1_1 = 20;
+    public static final int INTEROP_REMOTE_AVDTP_START = 21;
+    public static final int INTEROP_UPDATE_HID_SSR_MAX_LAT = 22;
+
+    // match up with interop_bl_type enum of interop_config.h
+    public static final int INTEROP_BL_TYPE_ADDR = 0;
+    public static final int INTEROP_BL_TYPE_NAME = 1;
+    public static final int INTEROP_BL_TYPE_MANUFACTURE = 2;
+    public static final int INTEROP_BL_TYPE_VNDR_PRDT = 3;
+    public static final int INTEROP_BL_TYPE_SSR_MAX_LAT = 4;
 }

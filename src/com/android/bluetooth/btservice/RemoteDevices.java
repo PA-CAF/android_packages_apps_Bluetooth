@@ -253,7 +253,8 @@ final class RemoteDevices {
         mAdapterService.sendBroadcast(intent, AdapterService.BLUETOOTH_ADMIN_PERM);
 
         //Remove the outstanding UUID request
-        mSdpTracker.remove(device);
+        if (mSdpTracker.contains(device))
+           mSdpTracker.remove(device);
     }
 
 

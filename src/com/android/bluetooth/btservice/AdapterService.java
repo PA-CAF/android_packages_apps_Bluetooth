@@ -2772,6 +2772,10 @@ public class AdapterService extends Service {
         mVendor.captureVndLogs();
     }
 
+    public boolean interopDatabaseMatch(int feature, int type, byte[] val) {
+        return mVendor.interopDatabaseMatch(feature, type, val);
+    }
+
     public void setSnooplogState(boolean status) {
         Settings.Secure.putInt(getContentResolver(),
                 Settings.Secure.BLUETOOTH_HCI_LOG, status ? 1 : 0);

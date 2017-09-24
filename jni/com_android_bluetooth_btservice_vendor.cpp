@@ -119,7 +119,6 @@ static void initNative(JNIEnv *env, jobject object) {
 
 static void cleanupNative(JNIEnv *env, jobject object) {
     const bt_interface_t* btInf;
-    bt_status_t status;
 
     if ( (btInf = getBluetoothInterface()) == NULL) {
         ALOGE("Bluetooth module is not loaded");
@@ -162,6 +161,20 @@ static void captureVndLogsNative(JNIEnv *env, jobject object) {
     return;
 }
 
+static jboolean interopDatabaseMatchNative(JNIEnv *env, jobject object, jint feature, jint type, jbyteArray value) {
+
+    ALOGI("%s", __FUNCTION__);
+    jbyte *val;
+    jboolean result = JNI_FALSE;
+
+    if (!sBluetoothVendorInterface) return JNI_FALSE;
+
+    val = env->GetByteArrayElements(value, NULL);
+    bool ret = sBluetoothVendorInterface->interop_db_match((int)feature, (int)type, (void *)val);
+    result = (ret == true) ? JNI_TRUE : JNI_FALSE;
+    return result;
+}
+
 static bool ssrcleanupNative(JNIEnv *env, jobject obj, jboolean cleanup) {
 
     ALOGI("%s", __FUNCTION__);
@@ -184,6 +197,7 @@ static JNINativeMethod sMethods[] = {
     {"ssrcleanupNative", "(Z)V", (void*) ssrcleanupNative},
     {"bredrcleanupNative", "()V", (void*) bredrcleanupNative},
     {"captureVndLogsNative", "()V", (void*) captureVndLogsNative},
+    {"interopDatabaseMatchNative", "(II[B)Z", (void*) interopDatabaseMatchNative},
 };
 
 int register_com_android_bluetooth_btservice_vendor(JNIEnv* env)

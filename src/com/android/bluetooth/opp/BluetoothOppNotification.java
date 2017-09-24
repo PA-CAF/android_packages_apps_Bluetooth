@@ -340,6 +340,7 @@ class BluetoothOppNotification {
                 intent.putExtra(Constants.EXTRA_BT_OPP_TRANSFER_ID, item.id);
                 intent.putExtra(Constants.EXTRA_BT_OPP_TRANSFER_PROGRESS, progress);
                 intent.putExtra(Constants.EXTRA_BT_OPP_ADDRESS, item.destination);
+                intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
                 mContext.sendBroadcast(intent, Constants.HANDOVER_STATUS_PERMISSION);
                 continue;
             }
@@ -373,7 +374,7 @@ class BluetoothOppNotification {
             Intent intent = new Intent(Constants.ACTION_LIST);
             intent.setClassName(Constants.THIS_PACKAGE_NAME, BluetoothOppReceiver.class.getName());
             intent.setDataAndNormalize(Uri.parse(BluetoothShare.CONTENT_URI + "/" + item.id));
-
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             b.setContentIntent(PendingIntent.getBroadcast(mContext, 0, intent, 0));
             mNotificationMgr.notify(item.id, b.build());
 
@@ -464,12 +465,14 @@ class BluetoothOppNotification {
                     unsuccess_caption);
             intent = new Intent(Constants.ACTION_OPEN_OUTBOUND_TRANSFER);
             intent.setClassName(Constants.THIS_PACKAGE_NAME, BluetoothOppReceiver.class.getName());
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             outNoti.color = mContext.getColor(
                     com.android.internal.R.color.system_notification_accent_color);
             outNoti.setLatestEventInfo(mContext, title, caption, PendingIntent.getBroadcast(
                     mContext, 0, intent, 0));
             intent = new Intent(Constants.ACTION_COMPLETE_HIDE);
             intent.setClassName(Constants.THIS_PACKAGE_NAME, BluetoothOppReceiver.class.getName());
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             outNoti.deleteIntent = PendingIntent.getBroadcast(mContext, 0, intent, 0);
             outNoti.when = timeStamp;
             mNotificationMgr.notify(NOTIFICATION_ID_OUTBOUND, outNoti);
@@ -523,11 +526,13 @@ class BluetoothOppNotification {
                     unsuccess_caption);
             intent = new Intent(Constants.ACTION_OPEN_INBOUND_TRANSFER);
             intent.setClassName(Constants.THIS_PACKAGE_NAME, BluetoothOppReceiver.class.getName());
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             inNoti.color = mContext.getColor(
                     com.android.internal.R.color.system_notification_accent_color);
             inNoti.setLatestEventInfo(mContext, title, caption, PendingIntent.getBroadcast(
                     mContext, 0, intent, 0));
             intent = new Intent(Constants.ACTION_COMPLETE_HIDE);
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             intent.setClassName(Constants.THIS_PACKAGE_NAME, BluetoothOppReceiver.class.getName());
             inNoti.deleteIntent = PendingIntent.getBroadcast(mContext, 0, intent, 0);
             inNoti.when = timeStamp;
@@ -561,7 +566,7 @@ class BluetoothOppNotification {
           Uri contentUri = Uri.parse(BluetoothShare.CONTENT_URI + "/" + info.mID);
           Intent baseIntent = new Intent().setDataAndNormalize(contentUri)
               .setClassName(Constants.THIS_PACKAGE_NAME, BluetoothOppReceiver.class.getName());
-
+          baseIntent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
           Notification n = new Notification.Builder(mContext)
               .setOnlyAlertOnce(true)
               .setOngoing(true)

@@ -96,6 +96,8 @@ public class SapService extends ProfileService {
 
     private boolean mIsWaitingAuthorization = false;
     private boolean mIsRegistered = false;
+    /* Indicate SapService internal state: started or stopped */
+    private boolean mStartError = true;
 
     private SapServiceMessageHandler mSessionStatusHandler = null;
 
@@ -202,6 +204,9 @@ public class SapService extends ProfileService {
     }
 
     private final synchronized void closeServerSocket() {
+        if (DEBUG) Log.d(TAG, "SAP Service closeService in");
+        // Mark SapService stop while shutdown ongoing.
+        mStartError = true;
         // exit SocketAcceptThread early
         if (mServerSocket != null) {
             try {
@@ -213,6 +218,7 @@ public class SapService extends ProfileService {
                 Log.e(TAG, "Close Server Socket error: ", ex);
             }
         }
+        if (DEBUG) Log.d(TAG, "SAP Service closeService in");
     }
     private final synchronized void closeConnectionSocket() {
         if (mConnSocket != null) {
@@ -509,6 +515,10 @@ public class SapService extends ProfileService {
         }
     };
 
+    protected boolean isSapStarted() {
+        return !mStartError;
+    }
+
     private void setState(int state) {
         setState(state, BluetoothSap.RESULT_SUCCESS, false);
     }
@@ -533,6 +543,7 @@ public class SapService extends ProfileService {
             intent.putExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, prevState);
             intent.putExtra(BluetoothProfile.EXTRA_STATE, mState);
             intent.putExtra(BluetoothDevice.EXTRA_DEVICE, mRemoteDevice);
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             sendBroadcast(intent, BLUETOOTH_PERM);
             AdapterService s = AdapterService.getAdapterService();
             if (s != null) {
@@ -662,7 +673,8 @@ public class SapService extends ProfileService {
         mSessionStatusHandler = new SapServiceMessageHandler(looper);
         mSessionStatusHandler.sendMessage(mSessionStatusHandler
                 .obtainMessage(START_LISTENER));
-        return true;
+        mStartError = false;
+        return !mStartError;
     }
 
     @Override
@@ -678,16 +690,44 @@ public class SapService extends ProfileService {
         } catch (Exception e) {
             Log.w(TAG,"Unable to unregister sap receiver",e);
         }
-        setState(BluetoothSap.STATE_DISCONNECTED, BluetoothSap.RESULT_CANCELED, true);
+        //Stop SapService if already started.
+        if (!isSapStarted()) {
+            if (DEBUG) Log.d(TAG, "Service Not Available to STOP or Shutdown already" +
+                " in progress - Ignoring");
+            return true;
+        } else {
+            if (VERBOSE) Log.d(TAG, "Service Stoping()");
+        }
+        if (getState() != BluetoothSap.STATE_DISCONNECTED) {
+            setState(BluetoothSap.STATE_DISCONNECTED, BluetoothSap.RESULT_CANCELED, true);
+        }
         if (mSessionStatusHandler != null)
             sendShutdownMessage();
+        mStartError = true;
         if(DEBUG) Log.v(TAG, "stop() out");
         return true;
     }
 
     public boolean cleanup()  {
-        setState(BluetoothSap.STATE_DISCONNECTED, BluetoothSap.RESULT_CANCELED, true);
-        sendShutdownMessage();
+        //Stop SapService if already started.
+        if (!isSapStarted()) {
+            if (DEBUG) Log.d(TAG, "Service Not Available to STOP or Shutdown already" +
+                " in progress - Ignoring");
+            return true;
+        } else {
+            if (VERBOSE) Log.d(TAG, "Service Cleaning()");
+        }
+        // SetState Disconnect already handled from closeService.
+        // Handle it otherwise. Redundant for backup ?
+        if (getState() != BluetoothSap.STATE_DISCONNECTED) {
+            setState(BluetoothSap.STATE_DISCONNECTED, BluetoothSap.RESULT_CANCELED, true);
+        }
+        //Cleanup already handled in Stop().
+        //Move this  extra check to Handler.
+        if (mSessionStatusHandler != null) {
+            sendShutdownMessage();
+        }
+        mStartError = true;
         return true;
     }
 
@@ -771,7 +811,17 @@ public class SapService extends ProfileService {
                                                BluetoothAdapter.ERROR);
                 if (state == BluetoothAdapter.STATE_TURNING_OFF) {
                     if (DEBUG) Log.d(TAG, "STATE_TURNING_OFF");
-                    sendShutdownMessage();
+                     //Stop SapService if already started.
+                    if (!isSapStarted()) {
+                        if (DEBUG) Log.d(TAG, "Service Not Available to STOP or Shutdown already" +
+                            " in progress - Ignoring");
+                    } else if (mSessionStatusHandler != null) {
+                        if (VERBOSE) Log.d(TAG, "Service Stoping()");
+                        sendShutdownMessage();
+                    } else {
+                        if (DEBUG) Log.d(TAG, "Unable to perform STOP or Shutdown already" +
+                            " in progress - Ignoring");
+                    }
                 } else if (state == BluetoothAdapter.STATE_ON) {
                     if (DEBUG) Log.d(TAG, "STATE_ON");
                     // start RFCOMM listener

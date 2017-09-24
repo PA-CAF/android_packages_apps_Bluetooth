@@ -894,8 +894,13 @@ public final class Avrcp {
         public void onActiveSessionsChanged(List<MediaController> controllers) {
             Log.v(TAG, "Active sessions changed, " + controllers.size() + " sessions");
             if (controllers.size() > 0) {
+                String CurrentPackageName = (controllers.get(0) != null) ? controllers.get(0).getPackageName():null;
+                Log.v(TAG, "CurrentPackageName " + controllers.get(0).getPackageName());
                 HeadsetService mService = HeadsetService.getHeadsetService();
-                if (mService != null && mService.isInCall()) {
+                if (mService != null && (mService.isInCall() ||
+                                 (CurrentPackageName != null &&
+                                  ((CurrentPackageName.contains("telecom")) ||
+                                    (CurrentPackageName.contains("telephony")))))) {
                     Log.d(TAG, "Ignoring session changed update because of MT call in progress");
                     return;
                 }
@@ -5077,11 +5082,6 @@ public final class Avrcp {
         boolean focussed = false;
         boolean isResetFocusRequired = false;
         BluetoothDevice device = null;
-        HeadsetService mService = HeadsetService.getHeadsetService();
-        if (mService != null && mService.isInCall()) {
-            Log.d(TAG, "There is an active call, so don't processRCCStateChange.");
-            return;
-        }
         if (isFocussed == 1)
             focussed = true;
         if (isAvailable == 1)

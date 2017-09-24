@@ -55,6 +55,7 @@ public class BluetoothPbapReceiver extends BroadcastReceiver {
         String action = intent.getAction();
         in.putExtra("action", action);
         if (D) Log.d(TAG, "PbapReceiver onReceive action = " + action);
+        if (action == null) return; /* Nothing to do */
 
         boolean startService = true;
         if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {

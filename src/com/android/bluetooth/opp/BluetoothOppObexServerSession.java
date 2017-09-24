@@ -405,6 +405,7 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             }
             Intent in = new Intent(BluetoothShare.INCOMING_FILE_CONFIRMATION_REQUEST_ACTION);
             in.setClassName(Constants.THIS_PACKAGE_NAME, BluetoothOppReceiver.class.getName());
+            in.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             mContext.sendBroadcast(in);
             sendVendorDebugBroadcast();
         }
@@ -741,6 +742,7 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
                         Constants.COUNT_HEADER_UNAVAILABLE);
             }
             intent.putExtra(Constants.EXTRA_BT_OPP_ADDRESS, destination);
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             mContext.sendBroadcast(intent, Constants.HANDOVER_STATUS_PERMISSION);
         }
         mTimestamp = System.currentTimeMillis();

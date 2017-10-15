@@ -822,8 +822,7 @@ public class BluetoothPbapService extends Service implements IObexConnectionHand
                     notifyAuthCancelled();
                     break;
                 case MSG_SERVERSESSION_CLOSE:
-                    if (mState != BluetoothPbap.STATE_DISCONNECTED)
-                        stopObexServerSession();
+                    stopObexServerSession();
                     break;
                 case MSG_SESSION_ESTABLISHED:
                     break;

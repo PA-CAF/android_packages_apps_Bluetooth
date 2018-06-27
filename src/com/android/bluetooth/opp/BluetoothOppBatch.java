@@ -141,9 +141,6 @@ public class BluetoothOppBatch {
     public void cancelBatch() {
         if (V) Log.v(TAG, "batch " + this.mId + " is canceled");
 
-        if (mListener != null) {
-            mListener.onBatchCanceled();
-        }
         //TODO investigate if below code is redundant
         for (int i = mShares.size() - 1; i >= 0; i--) {
             BluetoothOppShareInfo info = mShares.get(i);
@@ -167,6 +164,9 @@ public class BluetoothOppBatch {
 
                 Constants.updateShareStatus(mContext, info.mId, BluetoothShare.STATUS_CANCELED);
             }
+        }
+        if (mListener != null) {
+            mListener.onBatchCanceled();
         }
         mShares.clear();
     }

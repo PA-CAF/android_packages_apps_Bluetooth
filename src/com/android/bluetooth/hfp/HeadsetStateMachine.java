@@ -170,6 +170,9 @@ final class HeadsetStateMachine extends StateMachine {
                                                                 "00:17:53", /* ADAYO CK */
                                                                 "40:ef:4c", /* Road Rover CK */
                                                                };
+    // Blacklist remote device addresses going into bad state if we retry
+    private static final String [] BlacklistDeviceAddrForNotRetrying =
+                                                              {"A0:14:3D"};  /* Honda HFT */
     private static final int CONNECT_TIMEOUT_MILLIS = 30000;
 
     // Max number of HF connections at any time
@@ -860,8 +863,10 @@ final class HeadsetStateMachine extends StateMachine {
                             boolean connectPending = hasDeferredMessages(CONNECT)
                                     && max_hf_connections == 1;
                             Log.d(TAG, "connectPending: " + connectPending);
-                            // retry again only if we tried once
-                            if (mRetryConnect.get(device) == 1 && !connectPending) {
+                            // retry again only if we tried once for non-blacklisted devices
+                            if (mRetryConnect.get(device) == 1 &&
+                                  !connectPending &&
+                                  !isDeviceBlacklistedforConnectionRetry(device)) {
                                 Log.d(TAG, "Retry outgoing conn again for device = " + mTargetDevice
                                       + " after " + RETRY_CONNECT_TIME_SEC + "msec");
                                 Message m = obtainMessage(CONNECT);
@@ -2587,8 +2592,9 @@ final class HeadsetStateMachine extends StateMachine {
                         }
                     } else if (mTargetDevice != null && mTargetDevice.equals(device)) {
                         if (mRetryConnect.containsKey(mTargetDevice)) {
-                            // retry again only if we tried once
-                            if (mRetryConnect.get(device) == 1) {
+                            // retry again only if we tried once for non-blacklisted devices
+                            if (mRetryConnect.get(device) == 1 &&
+                                  !isDeviceBlacklistedforConnectionRetry(device)) {
                                 Log.d(TAG, "Retry outgoing conn again for device = " + mTargetDevice
                                       + " after " + RETRY_CONNECT_TIME_SEC + "msec");
                                 Message m = obtainMessage(CONNECT);
@@ -4876,6 +4882,18 @@ final class HeadsetStateMachine extends StateMachine {
         }
         return false;
     }
+
+    boolean isDeviceBlacklistedforConnectionRetry(BluetoothDevice device) {
+        for (int j = 0; j < BlacklistDeviceAddrForNotRetrying.length;j++) {
+            String addr = BlacklistDeviceAddrForNotRetrying[j];
+            if (device.toString().toLowerCase().startsWith(addr.toLowerCase())) {
+                Log.d(TAG,"Remote device " + device.toString() + " blacklisted for not retrying");
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void sendVoipConnectivityNetworktype(boolean isVoipStarted) {
         Log.d(TAG, "Enter sendVoipConnectivityNetworktype()");
         NetworkInfo networkInfo = mConnectivityManager.getActiveNetworkInfo();

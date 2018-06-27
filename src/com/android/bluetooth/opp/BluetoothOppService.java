@@ -236,11 +236,11 @@ public class BluetoothOppService extends ProfileService implements IObexConnecti
                     break;
                 case STOP_LISTENER:
                     if (mThreadStopListener == null) {
+                        unregisterReceivers();
+                        stopListeners();
                         Runnable r = new Runnable() {
                             public void run() {
-                                stopListeners();
                                 mListenStarted = false;
-                                unregisterReceivers();
                                 //Stop Active INBOUND Transfer
                                 if(mServerTransfer != null){
                                    mServerTransfer.onBatchCanceled();
@@ -404,7 +404,7 @@ public class BluetoothOppService extends ProfileService implements IObexConnecti
 
     @Override
     public boolean cleanup() {
-        if (V) Log.v(TAG, "onDestroy");
+        Log.d(TAG, "onDestroy");
         stopListeners();
         if (mHandler != null) {
             mHandler.removeCallbacksAndMessages(null);
@@ -422,7 +422,10 @@ public class BluetoothOppService extends ProfileService implements IObexConnecti
             Log.w(TAG, "unregisterContentObserver " + e.toString());
         }
         try {
-            unregisterReceiver(mBluetoothReceiver);
+            if (mBluetoothReceiver != null) {
+                unregisterReceiver(mBluetoothReceiver);
+                mBluetoothReceiver = null;
+            }
         } catch (IllegalArgumentException e) {
             Log.w(TAG, "unregisterReceiver " + e.toString());
         }
@@ -436,7 +439,7 @@ public class BluetoothOppService extends ProfileService implements IObexConnecti
                     + " for incoming connection" + transport.toString());
     }
 
-    private final BroadcastReceiver mBluetoothReceiver = new BroadcastReceiver() {
+    private BroadcastReceiver mBluetoothReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
@@ -1118,6 +1121,7 @@ public class BluetoothOppService extends ProfileService implements IObexConnecti
     }
 
     private void stopListeners() {
+        if (D) Log.d(TAG, "stopListeners   start");
         if (mAdapter != null && mOppSdpHandle >= 0 && SdpManager.getDefaultManager() != null) {
             if (D) Log.d(TAG, "Removing SDP record mOppSdpHandle :" + mOppSdpHandle);
             boolean status = SdpManager.getDefaultManager().removeSdpRecord(mOppSdpHandle);

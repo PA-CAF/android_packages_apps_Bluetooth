@@ -278,7 +278,7 @@ public class BluetoothPbapService extends ProfileService implements IObexConnect
         if (action.equals(BluetoothDevice.ACTION_ACL_DISCONNECTED)) {
             BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
-            if (mRemoteDevice == null) return;
+            if (mRemoteDevice == null || device == null ) return;
             if (DEBUG) Log.d(TAG,"ACL disconnected for "+ device);
             if (mRemoteDevice.equals(device)) {
                 if (mIsWaitingAuthorization) {
@@ -434,7 +434,7 @@ public class BluetoothPbapService extends ProfileService implements IObexConnect
 
     private final void closeService() {
         if (VERBOSE) Log.v(TAG, "Pbap Service closeService in");
-
+        unregisterReceivers();
         BluetoothPbapUtils.savePbapParams(this, BluetoothPbapUtils.primaryVersionCounter,
                 BluetoothPbapUtils.secondaryVersionCounter, BluetoothPbapUtils.mDbIdentifier.get(),
                 BluetoothPbapUtils.contactsLastUpdated, BluetoothPbapUtils.totalFields,
@@ -895,23 +895,28 @@ public class BluetoothPbapService extends ProfileService implements IObexConnect
     @Override
     protected boolean stop() {
         Log.v(TAG, "stop()");
-        if (mContactChangeObserver == null) {
-            Log.i(TAG, "Avoid unregister when receiver it is not registered");
-            return true;
-        }
-        try {
-            unregisterReceiver(mPbapReceiver);
-            getContentResolver().unregisterContentObserver(mContactChangeObserver);
-            mContactChangeObserver = null;
-        } catch (Exception e) {
-            Log.w(TAG, "Unable to unregister pbap receiver", e);
-        }
         if (!mStartError)
             mSessionStatusHandler.obtainMessage(SHUTDOWN).sendToTarget();
         setState(BluetoothPbap.STATE_DISCONNECTED, BluetoothPbap.RESULT_CANCELED);
 
         mStartError = true;
         return true;
+    }
+
+    private void unregisterReceivers() {
+        try {
+            if (mContactChangeObserver != null) {
+                getContentResolver().unregisterContentObserver(mContactChangeObserver);
+                mContactChangeObserver = null;
+            }
+        } catch (IllegalArgumentException e) {
+            Log.w(TAG, "mContactChangeObserver " + e.toString());
+        }
+        try {
+            unregisterReceiver(mPbapReceiver);
+        } catch (IllegalArgumentException e) {
+            Log.w(TAG, "mPbapReceiver " + e.toString());
+        }
     }
 
     public boolean cleanup()  {

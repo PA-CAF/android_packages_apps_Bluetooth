@@ -1818,19 +1818,6 @@ public final class Avrcp {
                             + currentAttributes.toRedactedString() + " : "
                             + mMediaAttributes.toRedactedString());
 
-
-            if (mAvailablePlayerViewChanged && addr != null &&
-                    index != INVALID_DEVICE_INDEX &&
-                    (deviceFeatures[index].mAvailablePlayersChangedNT ==
-                        AvrcpConstants.NOTIFICATION_TYPE_INTERIM)) {
-                Log.v(TAG, "Sending response for available playerchanged:");
-                deviceFeatures[index].mAvailablePlayersChangedNT =
-                                   AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
-                registerNotificationRspAvalPlayerChangedNative(
-                        AvrcpConstants.NOTIFICATION_TYPE_CHANGED, addr);
-                mAvailablePlayerViewChanged = false;
-                return;
-            }
             if (addr != null && mReportedPlayerID != mCurrAddrPlayerID &&
                     index != INVALID_DEVICE_INDEX) {
                 if (deviceFeatures[index].mAvailablePlayersChangedNT ==
@@ -2076,6 +2063,17 @@ public final class Avrcp {
                 registerNotificationRspAvalPlayerChangedNative(
                         AvrcpConstants.NOTIFICATION_TYPE_INTERIM,
                         getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
+                if (mAvailablePlayerViewChanged &&
+                        (deviceFeatures[deviceIndex].mAvailablePlayersChangedNT ==
+                        AvrcpConstants.NOTIFICATION_TYPE_INTERIM)) {
+                    Log.v(TAG, "Sending response for available playerchanged:");
+                    deviceFeatures[deviceIndex].mAvailablePlayersChangedNT =
+                                                 AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
+                    registerNotificationRspAvalPlayerChangedNative(
+                            AvrcpConstants.NOTIFICATION_TYPE_CHANGED,
+                            getByteAddress(deviceFeatures[deviceIndex].mCurrentDevice));
+                    mAvailablePlayerViewChanged = false;
+                }
                 break;
 
             case EVT_ADDR_PLAYER_CHANGED:
@@ -4079,19 +4077,21 @@ public final class Avrcp {
         }
 
         public void SendSetPlayerAppRsp(int attr_status, byte[] address) {
-            for (int i = 0; i < maxAvrcpConnections; i++) {
-                if (deviceFeatures[i].mCurrentDevice != null &&
-                    deviceFeatures[i].mPlayerStatusChangeNT ==
-                        AvrcpConstants.NOTIFICATION_TYPE_INTERIM) {
-                    Log.v(TAG,"device has registered for mPlayerAppSettingStatusChangeNT");
-                    deviceFeatures[i].mPlayerStatusChangeNT =
-                            AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
-                    mAvrcpPlayerAppSettings.sendPlayerAppChangedRsp(
-                            deviceFeatures[i].mPlayerStatusChangeNT,
-                            deviceFeatures[i].mCurrentDevice);
-                 } else {
-                    Log.v(TAG,"Drop Set Attr Val update from media player");
-                 }
+            if (attr_status != AvrcpConstants.RSP_INTERNAL_ERR) {
+                for (int i = 0; i < maxAvrcpConnections; i++) {
+                    if (deviceFeatures[i].mCurrentDevice != null &&
+                        deviceFeatures[i].mPlayerStatusChangeNT ==
+                            AvrcpConstants.NOTIFICATION_TYPE_INTERIM) {
+                        Log.v(TAG,"device has registered for mPlayerAppSettingStatusChangeNT");
+                        deviceFeatures[i].mPlayerStatusChangeNT =
+                                AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
+                        mAvrcpPlayerAppSettings.sendPlayerAppChangedRsp(
+                                deviceFeatures[i].mPlayerStatusChangeNT,
+                                deviceFeatures[i].mCurrentDevice);
+                    } else {
+                        Log.v(TAG,"Drop Set Attr Val update from media player");
+                    }
+                }
             }
             if ((address != null) && (!SendSetPlayerAppRspNative(attr_status, address))) {
                 Log.e(TAG, "SendSetPlayerAppRspNative failed!");

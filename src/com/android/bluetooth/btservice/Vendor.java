@@ -49,6 +49,9 @@ final class Vendor {
         bredrcleanupNative();
     }
 
+    public void bredrStartup() {
+        bredrstartupNative();
+    }
     public void setWifiState(boolean status) {
         Log.d(TAG,"setWifiState to: " + status);
         setWifiStateNative(status);
@@ -97,6 +100,7 @@ final class Vendor {
     }
 
     private native void bredrcleanupNative();
+    private native void bredrstartupNative();
     private native void initNative();
     private native static void classInitNative();
     private native void cleanupNative();

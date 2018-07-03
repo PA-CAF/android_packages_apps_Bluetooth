@@ -392,13 +392,13 @@ class PhonePolicy {
     // invoked and there are no current bluetooth connections no new profiles will be connected.
     private void processConnectOtherProfiles(BluetoothDevice device) {
         debugLog("processConnectOtherProfiles, device=" + device);
-        if (mAdapterService.getState() != BluetoothAdapter.STATE_ON) {
-            warnLog("processConnectOtherProfiles, adapter is not ON " + mAdapterService.getState());
-            return;
-        }
         if (mQueuedDevicesList.contains(device)) {
             debugLog("processConnectOtherProfiles() remove device from queued list " + device);
             mQueuedDevicesList.remove(device);
+        }
+        if (mAdapterService.getState() != BluetoothAdapter.STATE_ON) {
+            warnLog("processConnectOtherProfiles, adapter is not ON " + mAdapterService.getState());
+            return;
         }
         HeadsetService hsService = mFactory.getHeadsetService();
         A2dpService a2dpService = mFactory.getA2dpService();

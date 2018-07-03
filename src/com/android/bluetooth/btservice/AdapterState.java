@@ -193,6 +193,7 @@ final class AdapterState extends StateMachine {
                    mPendingCommandState.setTurningOn(true);
                    transitionTo(mPendingCommandState);
                    sendMessageDelayed(BREDR_START_TIMEOUT, BREDR_START_TIMEOUT_DELAY);
+                   mVendor.bredrStartup();
                    adapterService.startCoreServices();
                    break;
                case USER_TURN_OFF:

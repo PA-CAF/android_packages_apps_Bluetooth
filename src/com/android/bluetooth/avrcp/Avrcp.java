@@ -103,6 +103,7 @@ public final class Avrcp {
     private AvrcpMessageHandler mHandler;
     private final BluetoothAdapter mAdapter;
     private A2dpService mA2dpService;
+    private Handler mAudioManagerPlaybackHandler;
     private AudioManagerPlaybackListener mAudioManagerPlaybackCb;
     private MediaSessionManager mMediaSessionManager;
     private @Nullable MediaController mMediaController;
@@ -406,6 +407,7 @@ public final class Avrcp {
         mCurrentPlayerState = new PlaybackState.Builder().setState(PlaybackState.STATE_NONE, -1L, 0.0f).build();
         mReportedPlayStatus = PLAYSTATUS_ERROR;
         mA2dpState = BluetoothA2dp.STATE_NOT_PLAYING;
+        mAudioManagerIsPlaying = false;
         mPlayStatusChangedNT = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
         mPlayerStatusChangeNT  = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
         mTrackChangedNT = AvrcpConstants.NOTIFICATION_TYPE_CHANGED;
@@ -499,6 +501,8 @@ public final class Avrcp {
         thread.start();
         Looper looper = thread.getLooper();
         mHandler = new AvrcpMessageHandler(looper);
+        mAudioManagerPlaybackHandler = new Handler(looper);
+        mAudioManagerPlaybackCb = new AudioManagerPlaybackListener();
         mMediaControllerCb = new MediaControllerListener();
         mAvrcpMediaRsp = new AvrcpMediaRsp();
         mAvrcpPlayerAppSettingsRsp = new AvrcpPlayerAppSettingsRsp();
@@ -559,6 +563,10 @@ public final class Avrcp {
             // initialize browsable player list and build media player list
             buildBrowsablePlayerList();
         }
+
+        mAudioManager.registerAudioPlaybackCallback(
+                mAudioManagerPlaybackCb, mAudioManagerPlaybackHandler);
+
         Log.v(TAG, "Exit start");
     }
 
@@ -574,6 +582,8 @@ public final class Avrcp {
     public synchronized void doQuit() {
         if (DEBUG) Log.d(TAG, "doQuit");
         if (mAudioManager != null)
+            mAudioManager.unregisterAudioPlaybackCallback(mAudioManagerPlaybackCb);
+
         if (mMediaController != null) mMediaController.unregisterCallback(mMediaControllerCb);
         Message msg = mHandler.obtainMessage(MESSAGE_DEVICE_RC_CLEANUP, APP_CLEANUP,
                0, null);
@@ -588,6 +598,7 @@ public final class Avrcp {
             mAvrcpPlayerAppSettings = null;
         }
 
+        mAudioManagerPlaybackHandler.removeCallbacksAndMessages(null);
         mHandler.removeCallbacksAndMessages(null);
         Looper looper = mHandler.getLooper();
         if (looper != null) {
@@ -598,6 +609,8 @@ public final class Avrcp {
             mAvrcpBipRsp.stop();
             mAvrcpBipRsp = null;
         }
+
+        mAudioManagerPlaybackHandler = null;
         mContext.unregisterReceiver(mAvrcpReceiver);
         mContext.unregisterReceiver(mBootReceiver);
 
@@ -1780,6 +1793,20 @@ public final class Avrcp {
                 }
             } else {
                 newState = mMediaController.getPlaybackState();
+                if (newState == null) {
+                    Log.d(TAG, "updateCurrentMediaState: playState is null, mAudioManagerIsPlaying=" + mAudioManagerIsPlaying
+                               + ", isMusicActive=" + mAudioManager.isMusicActive());
+                    PlaybackState.Builder builder = new PlaybackState.Builder();
+                    if (mAudioManagerIsPlaying && mAudioManager.isMusicActive()) {
+                        builder.setState(PlaybackState.STATE_PLAYING,
+                                PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f);
+                        newState = builder.build();
+                    } else if (!mAudioManagerIsPlaying && !mAudioManager.isMusicActive()){
+                        builder.setState(PlaybackState.STATE_PAUSED,
+                                PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0.0f);
+                        newState = builder.build();
+                    }
+                }
                 Log.v(TAG,"updateCurrentMediaState: get media attributes: ");
                 currentAttributes = new MediaAttributes(mMediaController.getMetadata());
             }
@@ -2955,13 +2982,15 @@ public final class Avrcp {
 
     private void removePackageFromBrowseList(String packageName) {
         if (DEBUG) Log.d(TAG, "removePackageFromBrowseList: " + packageName);
-        synchronized (mBrowsePlayerInfoList) {
-            int browseInfoID = getBrowseId(packageName);
-            if (browseInfoID != -1) {
-                mBrowsePlayerInfoList.remove(browseInfoID);
+        synchronized (this) {
+            synchronized (mBrowsePlayerInfoList) {
+                int browseInfoID = getBrowseId(packageName);
+                if (browseInfoID != -1) {
+                    mBrowsePlayerInfoList.remove(browseInfoID);
+                }
             }
         }
-         Log.d(TAG, "Exit removePackageFromBrowseList");
+        Log.d(TAG, "Exit removePackageFromBrowseList");
     }
 
     /*
@@ -2971,13 +3000,15 @@ public final class Avrcp {
     private int getBrowseId(String packageName) {
         boolean response = false;
         int browseInfoID = 0;
-        synchronized (mBrowsePlayerInfoList) {
-            for (BrowsePlayerInfo info : mBrowsePlayerInfoList) {
-                if (info.packageName.equals(packageName)) {
-                    response = true;
-                    break;
+        synchronized (this) {
+            synchronized (mBrowsePlayerInfoList) {
+                for (BrowsePlayerInfo info : mBrowsePlayerInfoList) {
+                    if (info.packageName.equals(packageName)) {
+                        response = true;
+                        break;
+                    }
+                    browseInfoID++;
                 }
-                browseInfoID++;
             }
         }
 
@@ -3211,10 +3242,12 @@ public final class Avrcp {
         String browseServiceName = "";
 
         // getting the browse service name from browse player info
-        synchronized (mBrowsePlayerInfoList) {
-            int browseInfoID = getBrowseId(packageName);
-            if (browseInfoID != -1) {
-                browseServiceName = mBrowsePlayerInfoList.get(browseInfoID).serviceClass;
+        synchronized (this) {
+            synchronized (mBrowsePlayerInfoList) {
+                int browseInfoID = getBrowseId(packageName);
+                if (browseInfoID != -1) {
+                    browseServiceName = mBrowsePlayerInfoList.get(browseInfoID).serviceClass;
+                }
             }
         }
 
@@ -3224,32 +3257,34 @@ public final class Avrcp {
     }
 
     void buildBrowsablePlayerList() {
-        synchronized (mBrowsePlayerInfoList) {
-            mBrowsePlayerInfoList.clear();
-            Intent intent = new Intent(android.service.media.MediaBrowserService.SERVICE_INTERFACE);
-            List<ResolveInfo> playerList =
-                    mPackageManager.queryIntentServices(intent, PackageManager.MATCH_ALL);
+        synchronized (this) {
+            synchronized (mBrowsePlayerInfoList) {
+                mBrowsePlayerInfoList.clear();
+                Intent intent = new Intent(android.service.media.MediaBrowserService.SERVICE_INTERFACE);
+                List<ResolveInfo> playerList =
+                        mPackageManager.queryIntentServices(intent, PackageManager.MATCH_ALL);
 
-            for (ResolveInfo info : playerList) {
-                String displayableName = info.loadLabel(mPackageManager).toString();
-                String serviceName = info.serviceInfo.name;
-                String packageName = info.serviceInfo.packageName;
+                for (ResolveInfo info : playerList) {
+                    String displayableName = info.loadLabel(mPackageManager).toString();
+                    String serviceName = info.serviceInfo.name;
+                    String packageName = info.serviceInfo.packageName;
 
-                if (DEBUG) Log.d(TAG, "Adding " + serviceName + " to list of browsable players");
-                BrowsePlayerInfo currentPlayer =
-                        new BrowsePlayerInfo(packageName, displayableName, serviceName);
-                mBrowsePlayerInfoList.add(currentPlayer);
-                MediaPlayerInfo playerInfo = getMediaPlayerInfo(packageName);
-                MediaController controller =
-                        (playerInfo == null) ? null : playerInfo.getMediaController();
-                // Refresh the media player entry so it notices we can browse
-                if (controller != null) {
-                    addMediaPlayerController(controller.getWrappedInstance());
-                } else {
-                    addMediaPlayerPackage(packageName);
+                    if (DEBUG) Log.d(TAG, "Adding " + serviceName + " to list of browsable players");
+                    BrowsePlayerInfo currentPlayer =
+                            new BrowsePlayerInfo(packageName, displayableName, serviceName);
+                    mBrowsePlayerInfoList.add(currentPlayer);
+                    MediaPlayerInfo playerInfo = getMediaPlayerInfo(packageName);
+                    MediaController controller =
+                            (playerInfo == null) ? null : playerInfo.getMediaController();
+                    // Refresh the media player entry so it notices we can browse
+                    if (controller != null) {
+                        addMediaPlayerController(controller.getWrappedInstance());
+                    } else {
+                        addMediaPlayerPackage(packageName);
+                    }
                 }
+                updateCurrentMediaState(null);
             }
-            updateCurrentMediaState(null);
         }
     }
 
@@ -3489,12 +3524,14 @@ public final class Avrcp {
      * @return true if it supports browsing, else false.
      */
     private boolean isBrowseSupported(String packageName) {
-        synchronized (mBrowsePlayerInfoList) {
-            /* check if Browsable Player's list contains this package name */
-            for (BrowsePlayerInfo info : mBrowsePlayerInfoList) {
-                if (info.packageName.equals(packageName)) {
-                    if (DEBUG) Log.v(TAG, "isBrowseSupported for " + packageName + ": true");
-                    return true;
+        synchronized (this) {
+            synchronized (mBrowsePlayerInfoList) {
+                /* check if Browsable Player's list contains this package name */
+                for (BrowsePlayerInfo info : mBrowsePlayerInfoList) {
+                    if (info.packageName.equals(packageName)) {
+                        if (DEBUG) Log.v(TAG, "isBrowseSupported for " + packageName + ": true");
+                        return true;
+                    }
                 }
             }
         }

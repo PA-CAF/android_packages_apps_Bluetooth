@@ -147,7 +147,7 @@ public class BluetoothOppService extends ProfileService implements IObexConnecti
 
     private Thread mThreadStopListener = null;
 
-    private static boolean isInterrupted = false;
+    private static boolean isInterrupted;
     /*
      * TODO No support for queue incoming from multiple devices.
      * Make an array list of server session to support receiving queue from
@@ -163,6 +163,7 @@ public class BluetoothOppService extends ProfileService implements IObexConnecti
     @Override
     protected void create() {
         if (D) Log.d(TAG, "onCreate");
+        isInterrupted = false;
         mShares = Lists.newArrayList();
         mBatchs = Lists.newArrayList();
         mObserver = new BluetoothShareContentObserver();
@@ -648,6 +649,7 @@ public class BluetoothOppService extends ProfileService implements IObexConnecti
 
                 cursor.close();
             }
+            Log.i(TAG," Update thread isInterrupted " + isInterrupted);
         }
 
     }
